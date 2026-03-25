@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Block Crash</title>
+    <style>
+        * {
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0a0f1e 0%, #0a0a1a 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Courier New', 'Segoe UI', monospace;
+            padding: 20px;
+            margin: 0;
+        }
+
+        /* MAIN CONTAINER — SHARP EDGES */
+        .game-container {
+            background: #0a0c12;
+            border: 3px solid #2a2e3a;
+            box-shadow: 10px 10px 0 #00000055;
+            padding: 20px;
+        }
+
+        /* TITLE — JUST BLOCK CRASH */
+        .game-title {
+            font-size: 2.8rem;
+            font-weight: 900;
+            text-align: center;
+            letter-spacing: 4px;
+            color: #f0f0f0;
+            text-shadow: 4px 4px 0 #ff3b6f, 6px 6px 0 #2a2e3a;
+            margin-bottom: 24px;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* SCORE PANEL — BLOCKY */
+        .score-panel {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #0f121c;
+            border: 2px solid #2a2e3a;
+            padding: 12px 20px;
+            margin-bottom: 20px;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .score-card {
+            background: #1a1e2a;
+            padding: 6px 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border: 1px solid #3a3e4a;
+            font-weight: bold;
+            font-size: 1.3rem;
+        }
+
+        .score-card .value {
+            font-size: 1.8rem;
+            font-weight: 900;
+            background: linear-gradient(45deg, #ffcc44, #ff8844);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        #score {
+            font-size: 2rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, #ffaa44, #ff5533);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        /* COMBO AREA — BLOCKY */
+        .combo-area {
+            background: #0f121c;
+            border: 2px solid #2a2e3a;
+            padding: 8px 16px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .combo-badge {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        #combo-count {
+            font-size: 2rem;
+            font-weight: 900;
+            color: #ff8844;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        .combo-bar {
+            width: 200px;
+            height: 16px;
+            background: #2a2e3a;
+            border: 1px solid #4a4e5a;
+        }
+
+        .combo-fill {
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(90deg, #ff6b6b, #ffaa44);
+            transition: width 0.1s linear;
+        }
+
+        /* GAME GRID — PERFECT BLOCKS, NO ROUNDING */
+        .game-area {
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            background: #0a0c12;
+            border: 3px solid #2a2e3a;
+            width: 100%;
+            max-width: 560px;
+            aspect-ratio: 1 / 1;
+        }
+
+        .cell {
+            background: #1a1e2a;
+            border: 1px solid #2a2e3a;
+            transition: all 0.05s linear;
+            aspect-ratio: 1 / 1;
+        }
+
+        .cell.preview-valid {
+            background: #4caf50aa;
+            border: 2px solid #8bc34a;
+            box-shadow: inset 0 0 0 2px #ccff88;
+        }
+
+        .cell.preview-invalid {
+            background: #f44336aa;
+            border: 2px solid #ff8888;
+        }
+
+        /* BLOCKS CONTAINER — SHARP */
+        .blocks-panel {
+            background: #0f121c;
+            border: 3px solid #2a2e3a;
+            padding: 16px;
+            min-width: 180px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            justify-content: center;
+        }
+
+        .block {
+            background: #1a1e2a;
+            border: 2px solid #3a3e4a;
+            padding: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.05s linear;
+        }
+
+        .block.selected {
+            border: 3px solid #ffaa44;
+            background: #2a2e3a;
+            transform: scale(1.01);
+        }
+
+        .block-piece {
+            display: inline-grid;
+            gap: 2px;
+        }
+
+        .block-cell {
+            width: 28px;
+            height: 28px;
+            border: 1px solid #00000044;
+        }
+
+        /* CUSTOMIZATION PANEL — BLOCKY */
+        .custom-panel {
+            margin-top: 24px;
+            background: #0f121c;
+            border: 2px solid #2a2e3a;
+            padding: 16px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            justify-content: center;
+        }
+
+        .custom-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: #1a1e2a;
+            border: 1px solid #3a3e4a;
+            padding: 6px 16px;
+        }
+
+        select, button {
+            background: #2a2e3a;
+            border: 1px solid #4a4e5a;
+            padding: 6px 12px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+
+        select:hover, button:hover {
+            background: #3a3e4a;
+        }
+
+        .color-preview {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .color-dot {
+            width: 32px;
+            height: 32px;
+            border: 2px solid #4a4e5a;
+            cursor: pointer;
+            transition: 0.05s linear;
+        }
+
+        .color-dot.active {
+            border: 3px solid #ffaa44;
+        }
+
+        /* MODAL — BLOCKY */
+        .modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #0f121c;
+            border: 4px solid #ff5533;
+            padding: 32px;
+            text-align: center;
+            z-index: 1000;
+            min-width: 280px;
+            box-shadow: 12px 12px 0 #00000088;
+        }
+
+        .modal.hidden {
+            display: none;
+        }
+
+        .modal button {
+            margin-top: 16px;
+            background: #ff5533;
+            border: none;
+            padding: 10px 24px;
+            font-weight: bold;
+        }
+
+        /* EFFECT ANIMATIONS */
+        @keyframes flash {
+            0% { background: rgba(255, 200, 100, 0); }
+            50% { background: rgba(255, 200, 100, 0.6); }
+            100% { background: rgba(255, 200, 100, 0); }
+        }
+
+        .flash-effect {
+            animation: flash 0.2s ease-out;
+        }
+
+        .particle {
+            position: fixed;
+            width: 6px;
+            height: 6px;
+            background: #ffaa44;
+            pointer-events: none;
+            z-index: 999;
+            animation: explode 0.4s ease-out forwards;
+        }
+
+        @keyframes explode {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(2) translate(var(--dx), var(--dy)); opacity: 0; }
+        }
+
+        @media (max-width: 700px) {
+            .block-cell { width: 20px; height: 20px; }
+            .game-title { font-size: 2rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="game-container">
+    <div class="game-title">BLOCK CRASH</div>
+
+    <!-- Score Panel -->
+    <div class="score-panel">
+        <div class="score-card">🏆 <span class="value" id="high-score">0</span></div>
+        <div class="score-card"><span id="score">0</span></div>
+        <div class="score-card">❤️ <span class="value" id="lives">3</span></div>
+        <button id="reset-btn">⟳ NEW GAME</button>
+    </div>
+
+    <!-- Combo Area -->
+    <div class="combo-area">
+        <div class="combo-badge">
+            <span>⚡ COMBO</span>
+            <span id="combo-count">0</span>
+        </div>
+        <div class="combo-bar">
+            <div class="combo-fill" id="combo-fill" style="width: 100%"></div>
+        </div>
+    </div>
+
+    <!-- Game Grid + Blocks -->
+    <div class="game-area">
+        <div class="grid" id="game-grid"></div>
+        <div class="blocks-panel" id="blocks-container"></div>
+    </div>
+
+    <!-- Customization Panel -->
+    <div class="custom-panel">
+        <div class="custom-group">
+            <span>🎨 SKIN</span>
+            <select id="skin-select">
+                <option value="classic">CLASSIC</option>
+                <option value="neon">NEON RAVE</option>
+                <option value="watermelon">WATERMELON</option>
+                <option value="interstellar">INTERSTELLAR</option>
+                <option value="custom">✨ CUSTOM</option>
+            </select>
+        </div>
+        <div class="custom-group" id="custom-colors-panel" style="display: none;">
+            <div class="color-preview" id="color-palette"></div>
+        </div>
+        <div class="custom-group">
+            <span>🌀 COMBO MODE</span>
+            <select id="combo-mode">
+                <option value="classic">CLASSIC (x1)</option>
+                <option value="aggressive">AGGRESSIVE (x1.8)</option>
+                <option value="custom">CUSTOM MULT</option>
+            </select>
+            <input type="range" id="custom-mult" min="0.5" max="3" step="0.05" value="1.2" style="width: 100px; display: none;">
+            <span id="mult-value" style="display: none;">1.2x</span>
+        </div>
+    </div>
+
+    <!-- Game Over Modal -->
+    <div id="gameover-modal" class="modal hidden">
+        <h2>💀 GAME OVER 💀</h2>
+        <p>SCORE: <strong id="final-score">0</strong></p>
+        <button id="restart-btn">PLAY AGAIN</button>
+    </div>
+</div>
+
+<script>
+    // ==================== BLOCK CRASH ENGINE ====================
+    // More colors: 12 vibrant block colors
+    const COLOR_NAMES = [
+        '--red-block', '--green-block', '--blue-block', '--yellow-block',
+        '--purple-block', '--orange-block', '--pink-block', '--cyan-block',
+        '--lime-block', '--coral-block', '--indigo-block', '--gold-block'
+    ];
+    const DEFAULT_COLORS = {
+        '--red-block': '#f44336',
+        '--green-block': '#4caf50',
+        '--blue-block': '#2196f3',
+        '--yellow-block': '#ffeb3b',
+        '--purple-block': '#9c27b0',
+        '--orange-block': '#ff9800',
+        '--pink-block': '#e91e63',
+        '--cyan-block': '#00bcd4',
+        '--lime-block': '#cddc39',
+        '--coral-block': '#ff6b6b',
+        '--indigo-block': '#3f51b5',
+        '--gold-block': '#ffc107'
+    };
+
+    // Block shapes (same as before, extensive)
+    const BLOCK_SHAPES = [
+        [[1]], [[1,1]], [[1],[1]], [[1,1,1]], [[1],[1],[1]], [[1,1,1,1]],
+        [[1,1],[1,1]], [[1,1,1],[0,1,0]], [[1,0],[1,1],[1,0]], [[0,1,0],[1,1,1]],
+        [[1,1,0],[0,1,1]], [[0,1,1],[1,1,0]], [[1,1,1],[1,0,0]], [[1,1,1],[0,0,1]],
+        [[1,0,0],[1,1,1]], [[0,0,1],[1,1,1]], [[1,1],[1,0]], [[1,1],[0,1]],
+        [[1,0],[1,1]], [[0,1],[1,1]], [[1,1,1,1,1]], [[1],[1],[1],[1],[1]],
+        [[1,1,1],[1,1,1]], [[1,1,0,0],[0,1,1,1]], [[1,1,1],[1,0,1]]
+    ];
+
+    let grid = Array(8).fill().map(() => Array(8).fill(null));
+    let currentBlocks = []; // { shape, color }
+    let selectedBlockIndex = -1;
+    let score = 0;
+    let highScore = localStorage.getItem('blockCrashHigh') || 0;
+    let lives = 3;
+    let combo = 0;
+    let comboMovesLeft = 3;
+    
+    // Customization
+    let currentSkin = 'classic';
+    let customColors = { ...DEFAULT_COLORS };
+    let comboMultiplier = 1.0;
+    let comboMode = 'classic';
+    
+    // DOM elements
+    const gridContainer = document.getElementById('game-grid');
+    const blocksContainer = document.getElementById('blocks-container');
+    const scoreEl = document.getElementById('score');
+    const highScoreEl = document.getElementById('high-score');
+    const livesEl = document.getElementById('lives');
+    const comboCountEl = document.getElementById('combo-count');
+    const comboFill = document.getElementById('combo-fill');
+    const gameoverModal = document.getElementById('gameover-modal');
+    const finalScoreEl = document.getElementById('final-score');
+
+    // Helper: get a random color from current theme
+    function getRandomColor() {
+        const colorVar = COLOR_NAMES[Math.floor(Math.random() * COLOR_NAMES.length)];
+        return getComputedStyle(document.documentElement).getPropertyValue(colorVar).trim() || '#ffaa44';
+    }
+
+    // Apply skin to CSS variables
+    function applySkin() {
+        const root = document.documentElement;
+        if (currentSkin === 'neon') {
+            root.style.setProperty('--red-block', '#ff3b6f');
+            root.style.setProperty('--green-block', '#3bff6f');
+            root.style.setProperty('--blue-block', '#3b6fff');
+            root.style.setProperty('--yellow-block', '#ffeb3b');
+            root.style.setProperty('--purple-block', '#d43bff');
+            root.style.setProperty('--orange-block', '#ff9e3b');
+            root.style.setProperty('--pink-block', '#ff66cc');
+            root.style.setProperty('--cyan-block', '#3be0ff');
+            root.style.setProperty('--lime-block', '#b0ff3b');
+            root.style.setProperty('--coral-block', '#ff7b6b');
+            root.style.setProperty('--indigo-block', '#6b3bff');
+            root.style.setProperty('--gold-block', '#ffcc3b');
+        } else if (currentSkin === 'watermelon') {
+            root.style.setProperty('--red-block', '#ff5e7e');
+            root.style.setProperty('--green-block', '#5fe87a');
+            root.style.setProperty('--blue-block', '#6f9eff');
+            root.style.setProperty('--yellow-block', '#ffe26b');
+            root.style.setProperty('--purple-block', '#c95eff');
+            root.style.setProperty('--orange-block', '#ffb347');
+            root.style.setProperty('--pink-block', '#ff85b3');
+            root.style.setProperty('--cyan-block', '#5fdcff');
+            root.style.setProperty('--lime-block', '#aaff66');
+            root.style.setProperty('--coral-block', '#ff8a6f');
+            root.style.setProperty('--indigo-block', '#9c6eff');
+            root.style.setProperty('--gold-block', '#ffdb6e');
+        } else if (currentSkin === 'interstellar') {
+            root.style.setProperty('--red-block', '#b84eff');
+            root.style.setProperty('--green-block', '#5f7eff');
+            root.style.setProperty('--blue-block', '#2f9eff');
+            root.style.setProperty('--yellow-block', '#f3b5ff');
+            root.style.setProperty('--purple-block', '#c75eff');
+            root.style.setProperty('--orange-block', '#b96eff');
+            root.style.setProperty('--pink-block', '#e282ff');
+            root.style.setProperty('--cyan-block', '#80c0ff');
+            root.style.setProperty('--lime-block', '#aaffdd');
+            root.style.setProperty('--coral-block', '#ff88aa');
+            root.style.setProperty('--indigo-block', '#bb88ff');
+            root.style.setProperty('--gold-block', '#ffccaa');
+        } else if (currentSkin === 'custom') {
+            for (let [key, val] of Object.entries(customColors)) {
+                root.style.setProperty(key, val);
+            }
+        } else { // classic
+            for (let [key, val] of Object.entries(DEFAULT_COLORS)) {
+                root.style.setProperty(key, val);
+            }
+        }
+        renderBlocks(); // refresh block colors
+        renderGrid();
+    }
+
+    // Combo multiplier
+    function getComboMultiplier() {
+        if (comboMode === 'aggressive') return 1.8;
+        if (comboMode === 'custom') return comboMultiplier;
+        return 1.0;
+    }
+
+    function updateComboUI() {
+        comboCountEl.textContent = combo;
+        const progress = (comboMovesLeft / 3) * 100;
+        comboFill.style.width = `${progress}%`;
+    }
+
+    // Particle effect
+    function spawnParticles(x, y, count = 12) {
+        for (let i = 0; i < count; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 30 + Math.random() * 50;
+            const dx = Math.cos(angle) * speed;
+            const dy = Math.sin(angle) * speed;
+            particle.style.setProperty('--dx', `${dx}px`);
+            particle.style.setProperty('--dy', `${dy}px`);
+            particle.style.left = `${x + (Math.random() - 0.5) * 40}px`;
+            particle.style.top = `${y + (Math.random() - 0.5) * 40}px`;
+            particle.style.background = `hsl(${Math.random() * 360}, 80%, 60%)`;
+            document.body.appendChild(particle);
+            setTimeout(() => particle.remove(), 400);
+        }
+    }
+
+    function flashScreen() {
+        document.body.classList.add('flash-effect');
+        setTimeout(() => document.body.classList.remove('flash-effect'), 200);
+    }
+
+    function addScore(points, linesCleared = 0) {
+        let multiplier = getComboMultiplier();
+        let comboBonus = (combo + 1);
+        let lineBonus = [0, 1, 3, 6, 10, 15][Math.min(linesCleared, 5)] || linesCleared * 2;
+        let totalGain = Math.floor(points * comboBonus * multiplier + lineBonus * 10);
+        score += totalGain;
+        scoreEl.textContent = score;
+        if (score > highScore) {
+            highScore = score;
+            highScoreEl.textContent = highScore;
+            localStorage.setItem('blockCrashHigh', highScore);
+        }
+        return totalGain;
+    }
+
+    // Grid rendering
+    function renderGrid() {
+        gridContainer.innerHTML = '';
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                if (grid[r][c]) {
+                    cell.style.backgroundColor = grid[r][c];
+                }
+                cell.dataset.row = r;
+                cell.dataset.col = c;
+                cell.addEventListener('click', () => tryPlaceBlock(r, c));
+                cell.addEventListener('mouseenter', () => showPreview(r, c));
+                cell.addEventListener('mouseleave', clearPreview);
+                gridContainer.appendChild(cell);
+            }
+        }
+    }
+
+    let currentPreviewCells = [];
+    function showPreview(row, col) {
+        if (selectedBlockIndex === -1) return;
+        const shape = currentBlocks[selectedBlockIndex].shape;
+        clearPreview();
+        let valid = true;
+        for (let r = 0; r < shape.length; r++) {
+            for (let c = 0; c < shape[r].length; c++) {
+                if (shape[r][c]) {
+                    const nr = row + r, nc = col + c;
+                    if (nr >= 8 || nc >= 8 || grid[nr][nc] !== null) valid = false;
+                }
+            }
+        }
+        for (let r = 0; r < shape.length; r++) {
+            for (let c = 0; c < shape[r].length; c++) {
+                if (shape[r][c]) {
+                    const nr = row + r, nc = col + c;
+                    if (nr < 8 && nc < 8) {
+                        const cell = document.querySelector(`.cell[data-row='${nr}'][data-col='${nc}']`);
+                        if (cell) {
+                            cell.classList.add(valid ? 'preview-valid' : 'preview-invalid');
+                            currentPreviewCells.push(cell);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    function clearPreview() {
+        currentPreviewCells.forEach(cell => {
+            cell.classList.remove('preview-valid', 'preview-invalid');
+        });
+        currentPreviewCells = [];
+    }
+
+    function tryPlaceBlock(row, col) {
+        if (selectedBlockIndex === -1) return false;
+        const block = currentBlocks[selectedBlockIndex];
+        const shape = block.shape;
+        // validity check
+        for (let r = 0; r < shape.length; r++) {
+            for (let c = 0; c < shape[r].length; c++) {
+                if (shape[r][c]) {
+                    const nr = row + r, nc = col + c;
+                    if (nr >= 8 || nc >= 8 || grid[nr][nc] !== null) return false;
+                }
+            }
+        }
+        // place
+        for (let r = 0; r < shape.length; r++) {
+            for (let c = 0; c < shape[r].length; c++) {
+                if (shape[r][c]) {
+                    const nr = row + r, nc = col + c;
+                    grid[nr][nc] = block.color;
+                }
+            }
+        }
+        let blockSize = shape.flat().filter(v => v === 1).length;
+        currentBlocks.splice(selectedBlockIndex, 1);
+        selectedBlockIndex = -1;
+        // line clear
+        const cleared = checkAndClearLines();
+        const pointsGained = addScore(blockSize * 5, cleared);
+        // visual feedback
+        if (cleared > 0) {
+            spawnParticles(window.innerWidth/2, window.innerHeight/2, 20);
+            flashScreen();
+            combo++;
+            comboMovesLeft = 3;
+        } else {
+            comboMovesLeft--;
+            if (comboMovesLeft <= 0) combo = 0;
+        }
+        updateComboUI();
+        if (currentBlocks.length === 0) generateNewBlocks();
+        renderGrid();
+        renderBlocks();
+        // game over check
+        if (!hasValidMoves()) {
+            if (lives > 0) {
+                lives--;
+                livesEl.textContent = lives;
+                if (lives === 0) gameOver();
+                else {
+                    currentBlocks = [];
+                    generateNewBlocks();
+                    renderBlocks();
+                    if (!hasValidMoves()) gameOver();
+                }
+            } else {
+                gameOver();
+            }
+        }
+        return true;
+    }
+
+    function checkAndClearLines() {
+        let cleared = 0;
+        // rows
+        for (let r = 0; r < 8; r++) {
+            let full = true;
+            for (let c = 0; c < 8; c++) if (grid[r][c] === null) { full = false; break; }
+            if (full) {
+                for (let c = 0; c < 8; c++) grid[r][c] = null;
+                cleared++;
+            }
+        }
+        // columns
+        for (let c = 0; c < 8; c++) {
+            let full = true;
+            for (let r = 0; r < 8; r++) if (grid[r][c] === null) { full = false; break; }
+            if (full) {
+                for (let r = 0; r < 8; r++) grid[r][c] = null;
+                cleared++;
+            }
+        }
+        return cleared;
+    }
+
+    function hasValidMoves() {
+        for (let i = 0; i < currentBlocks.length; i++) {
+            const shape = currentBlocks[i].shape;
+            for (let r = 0; r <= 8 - shape.length; r++) {
+                for (let c = 0; c <= 8 - (shape[0]?.length || 0); c++) {
+                    let valid = true;
+                    for (let sr = 0; sr < shape.length; sr++) {
+                        for (let sc = 0; sc < shape[sr].length; sc++) {
+                            if (shape[sr][sc] && grid[r + sr][c + sc] !== null) valid = false;
+                        }
+                    }
+                    if (valid) return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    function generateNewBlocks() {
+        while (currentBlocks.length < 3) {
+            const randomShape = BLOCK_SHAPES[Math.floor(Math.random() * BLOCK_SHAPES.length)];
+            currentBlocks.push({
+                shape: randomShape,
+                color: getRandomColor()
+            });
+        }
+    }
+
+    function renderBlocks() {
+        blocksContainer.innerHTML = '';
+        currentBlocks.forEach((block, idx) => {
+            const blockDiv = document.createElement('div');
+            blockDiv.className = 'block';
+            if (selectedBlockIndex === idx) blockDiv.classList.add('selected');
+            const shapeContainer = document.createElement('div');
+            shapeContainer.style.display = 'grid';
+            shapeContainer.style.gap = '2px';
+            const shape = block.shape;
+            for (let r = 0; r < shape.length; r++) {
+                const rowDiv = document.createElement('div');
+                rowDiv.style.display = 'flex';
+                rowDiv.style.gap = '2px';
+                rowDiv.style.justifyContent = 'center';
+                for (let c = 0; c < shape[r].length; c++) {
+                    const cellDiv = document.createElement('div');
+                    cellDiv.className = 'block-cell';
+                    if (shape[r][c]) {
+                        cellDiv.style.backgroundColor = block.color;
+                        cellDiv.style.border = '1px solid #00000066';
+                    } else {
+                        cellDiv.style.visibility = 'hidden';
+                    }
+                    rowDiv.appendChild(cellDiv);
+                }
+                shapeContainer.appendChild(rowDiv);
+            }
+            blockDiv.appendChild(shapeContainer);
+            blockDiv.addEventListener('click', (e) => {
+                e.stopPropagation();
+                selectedBlockIndex = idx;
+                renderBlocks();
+                clearPreview();
+            });
+            blocksContainer.appendChild(blockDiv);
+        });
+    }
+
+    function gameOver() {
+        finalScoreEl.textContent = score;
+        gameoverModal.classList.remove('hidden');
+    }
+
+    function resetGame() {
+        grid = Array(8).fill().map(() => Array(8).fill(null));
+        score = 0;
+        lives = 3;
+        combo = 0;
+        comboMovesLeft = 3;
+        selectedBlockIndex = -1;
+        scoreEl.textContent = score;
+        livesEl.textContent = lives;
+        updateComboUI();
+        currentBlocks = [];
+        generateNewBlocks();
+        renderGrid();
+        renderBlocks();
+        gameoverModal.classList.add('hidden');
+    }
+
+    // Custom color picker with confirmation
+    function buildCustomColorPicker() {
+        const palette = document.getElementById('color-palette');
+        palette.innerHTML = '';
+        COLOR_NAMES.forEach(key => {
+            const dot = document.createElement('div');
+            dot.className = 'color-dot';
+            const currentColor = getComputedStyle(document.documentElement).getPropertyValue(key).trim();
+            dot.style.backgroundColor = currentColor || '#ccc';
+            dot.addEventListener('click', () => {
+                const newColor = prompt(`Enter new color (hex or name):`, currentColor);
+                if (newColor && CSS.supports('color', newColor)) {
+                    const applyToBlocks = confirm('Apply this color to all current blocks?');
+                    if (applyToBlocks) {
+                        // Apply to all blocks in hand
+                        currentBlocks.forEach(block => {
+                            block.color = newColor;
+                        });
+                        renderBlocks();
+                    }
+                    customColors[key] = newColor;
+                    if (currentSkin === 'custom') applySkin();
+                    buildCustomColorPicker();
+                }
+            });
+            palette.appendChild(dot);
+        });
+    }
+
+    // Event listeners
+    document.getElementById('skin-select').addEventListener('change', (e) => {
+        currentSkin = e.target.value;
+        const customPanel = document.getElementById('custom-colors-panel');
+        if (currentSkin === 'custom') {
+            customPanel.style.display = 'flex';
+            buildCustomColorPicker();
+        } else {
+            customPanel.style.display = 'none';
+        }
+        applySkin();
+    });
+    document.getElementById('combo-mode').addEventListener('change', (e) => {
+        comboMode = e.target.value;
+        const slider = document.getElementById('custom-mult');
+        const multVal = document.getElementById('mult-value');
+        if (comboMode === 'custom') {
+            slider.style.display = 'inline-block';
+            multVal.style.display = 'inline-block';
+        } else {
+            slider.style.display = 'none';
+            multVal.style.display = 'none';
+        }
+    });
+    const multSlider = document.getElementById('custom-mult');
+    const multSpan = document.getElementById('mult-value');
+    multSlider.addEventListener('input', () => {
+        comboMultiplier = parseFloat(multSlider.value);
+        multSpan.textContent = comboMultiplier.toFixed(2) + 'x';
+    });
+    document.getElementById('reset-btn').addEventListener('click', resetGame);
+    document.getElementById('restart-btn').addEventListener('click', () => resetGame());
+
+    // Initialization
+    highScoreEl.textContent = highScore;
+    generateNewBlocks();
+    renderGrid();
+    renderBlocks();
+    applySkin();
+</script>
+</body>
+</html>
